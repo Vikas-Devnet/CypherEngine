@@ -1,5 +1,4 @@
 ﻿using System.Security.Cryptography;
-using System.Text;
 
 namespace CypherEngine
 {
@@ -10,7 +9,7 @@ namespace CypherEngine
             try
             {
                 string intermediateText = ReverseString(plainText);
-                intermediateText = TransposeText(intermediateText, byte16IV.Length/3);
+                intermediateText = SubstituteText(intermediateText, byte16IV.Length / 6);
                 intermediateText = AesOperations(intermediateText, byte32SecretKey, byte16IV, true);
                 return intermediateText;
             }
@@ -18,14 +17,13 @@ namespace CypherEngine
             {
                 throw new Exception(e.Message);
             }
-
         }
         internal static string GetDecryptedText(string cypherText, string byte32SecretKey, string byte16IV)
         {
             try
             {
                 string intermediateText = AesOperations(cypherText, byte32SecretKey, byte16IV, false);
-                intermediateText = InverseTransposeText(intermediateText, byte16IV.Length/3);
+                intermediateText = InverseSubstitute(intermediateText, byte16IV.Length / 6);
                 intermediateText = ReverseString(intermediateText);
                 return intermediateText;
             }
@@ -86,54 +84,30 @@ namespace CypherEngine
             Array.Reverse(charArray);
             return new string(charArray);
         }
-        private static string TransposeText(string plaintext, int key)
+        private static string SubstituteText(string input, int key)
         {
-            char[,] grid = new char[key, (plaintext.Length + key - 1) / key];
-            for (int i = 0; i < plaintext.Length; i++)
+            char[] buffer = input.ToCharArray();
+
+            for (int i = 0; i < buffer.Length; i++)
             {
-                grid[i % key, i / key] = plaintext[i];
-            }
-            StringBuilder transposedText = new();
-            for (int col = 0; col < grid.GetLength(1); col++)
-            {
-                for (int row = 0; row < key; row++)
+                char letter = buffer[i];
+                if (char.IsUpper(letter))
                 {
-                    if (grid[row, col] != '\0')
-                    {
-                        transposedText.Append(grid[row, col]);
-                    }
+                    letter = (char)(((letter - 'A' + key) % 26) + 'A');
                 }
+                else if (char.IsLower(letter))
+                {
+                    letter = (char)(((letter - 'a' + key) % 26) + 'a');
+                }
+                buffer[i] = letter;
             }
-            return transposedText.ToString();
+
+            return new string(buffer);
         }
 
-        private static string InverseTransposeText(string transposedText, int key)
+        private static string InverseSubstitute(string substitutedText, int key)
         {
-            int rows = (transposedText.Length + key - 1) / key;
-            char[,] grid = new char[key, rows];
-            int index = 0;
-            for (int col = 0; col < rows; col++)
-            {
-                for (int row = 0; row < key; row++)
-                {
-                    if (index < transposedText.Length)
-                    {
-                        grid[row, col] = transposedText[index++];
-                    }
-                }
-            }
-            StringBuilder plaintext = new();
-            for (int row = 0; row < key; row++)
-            {
-                for (int col = 0; col < rows; col++)
-                {
-                    if (grid[row, col] != '\0')
-                    {
-                        plaintext.Append(grid[row, col]);
-                    }
-                }
-            }
-            return plaintext.ToString();
+            return SubstituteText(substitutedText, 26 - key);
         }
     }
 }
